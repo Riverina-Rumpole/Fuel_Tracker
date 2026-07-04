@@ -1,3 +1,7 @@
+---
+title: Privacy Policy for Fuel Tracker
+---
+
 # Privacy Policy for Fuel Tracker
 
 **Last updated:** 4 July 2026
