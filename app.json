@@ -1,0 +1,79 @@
+{
+  "expo": {
+    "name": "Fuel Tracker",
+    "slug": "bowser-wonder",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "bowserwonder",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bowserwonder.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Bowser Wonder photographs petrol bowser displays to read fill details with OCR.",
+        "NSPhotoLibraryUsageDescription": "Bowser Wonder can import a bowser photo from your library when someone else filled the vehicle for you, and can save bowser photos with your fuel records."
+      }
+    },
+    "android": {
+      "package": "com.bowserwonder.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B1220",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#0B1220",
+          "dark": {
+            "backgroundColor": "#0B1220"
+          }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Bowser Wonder photographs petrol bowser displays to read fill details with OCR."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.0"
+          }
+        }
+      ],
+      "expo-mlkit-ocr",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Bowser Wonder can import a bowser photo from your library when someone else filled the vehicle for you."
+        }
+      ],
+      "expo-notifications"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

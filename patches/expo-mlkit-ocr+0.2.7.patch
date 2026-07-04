@@ -1,0 +1,68 @@
+diff --git a/node_modules/expo-mlkit-ocr/ios/ExpoMlkitOcrModule.swift b/node_modules/expo-mlkit-ocr/ios/ExpoMlkitOcrModule.swift
+index b8efaa2..f7070a6 100644
+--- a/node_modules/expo-mlkit-ocr/ios/ExpoMlkitOcrModule.swift
++++ b/node_modules/expo-mlkit-ocr/ios/ExpoMlkitOcrModule.swift
+@@ -1,12 +1,50 @@
+ import ExpoModulesCore
+ import UIKit
+ import Vision
++import CoreImage
+ 
+ #if canImport(MLKitTextRecognition) && canImport(MLKitVision)
+ import MLKitTextRecognition
+ import MLKitVision
+ #endif
+ 
++private let ciContext = CIContext()
++
++// Converts to grayscale and boosts contrast moderately before OCR runs.
++//
++// Three other things were tried and reverted here, each making real test
++// photos worse rather than better:
++// - CISharpenLuminance on top of this amplified JPEG compression noise and
++//   glare edges into artifacts that made the OCR engine detect no text at
++//   all (worse than a plain misread digit).
++// - CIHighlightShadowAdjust for glare reduction crushed naturally light-gray
++//   LCD backgrounds (not actually blown-out glare) down to near-black,
++//   destroying the contrast between the background and the digit segments.
++// - CIColorInvert (light-on-dark instead of the LCDs' natural dark-on-light)
++//   also made real photos read worse, not better.
++// This plain grayscale+contrast version is the only one that's actually
++// tested as working (detects and mostly reads bowser display text
++// correctly) — stop reaching for further blind filter tweaks here; Vision/
++// MLKit are already tuned for natural photos, and manual preprocessing has
++// consistently hurt more than helped in testing. For a stubborn low-
++// contrast display, a manual correction on the review screen (every field
++// is editable) is the practical answer, not further image filters.
++private func enhancedForOCR(_ image: UIImage) -> UIImage {
++  guard let ciImage = CIImage(image: image) else { return image }
++
++  let adjusted = ciImage.applyingFilter("CIColorControls", parameters: [
++    kCIInputSaturationKey: 0.0,
++    kCIInputContrastKey: 1.35,
++    kCIInputBrightnessKey: 0.0,
++  ])
++
++  guard let cgImage = ciContext.createCGImage(adjusted, from: ciImage.extent) else {
++    return image
++  }
++
++  return UIImage(cgImage: cgImage, scale: image.scale, orientation: image.imageOrientation)
++}
++
+ private func cgImageOrientation(from uiOrientation: UIImage.Orientation) -> CGImagePropertyOrientation {
+   switch uiOrientation {
+   case .up: return .up
+@@ -65,10 +103,11 @@ public class ExpoMlkitOcrModule: Module {
+       }
+ 
+       let filePath = url.path
+-      guard let image = UIImage(contentsOfFile: filePath) else {
++      guard let loadedImage = UIImage(contentsOfFile: filePath) else {
+         promise.reject("IMAGE_LOAD_FAILED", "Failed to load image from: \(filePath)")
+         return
+       }
++      let image = enhancedForOCR(loadedImage)
+ 
+ #if canImport(MLKitTextRecognition) && canImport(MLKitVision)
+       var visionImage = VisionImage(image: image)
