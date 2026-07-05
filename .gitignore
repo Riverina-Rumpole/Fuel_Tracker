@@ -1,6 +1,7 @@
 node_modules/
 .expo/
 dist/
+.DS_Store
 
 # Native projects ARE tracked (not the default Expo managed-workflow
 # assumption) since we've made manual edits beyond what `expo prebuild`
