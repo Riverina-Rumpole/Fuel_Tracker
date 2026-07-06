@@ -53,6 +53,14 @@ export default function HistoryScreen() {
     [records, rangeFilter],
   );
 
+  // records/filteredRecords stay oldest-first since metrics (km since last,
+  // efficiency trend) are derived from that order; only the list display
+  // is reversed to show the newest fill first.
+  const displayRecords = useMemo(
+    () => [...filteredRecords].reverse(),
+    [filteredRecords],
+  );
+
   // useFuelRecords already refetches internally whenever the vehicle it's
   // passed changes, so refreshing vehicles here is enough to also pick up
   // fresh fill data. Depending on useFuelRecords' own `refresh` here too
@@ -218,7 +226,7 @@ export default function HistoryScreen() {
         </View>
       ) : (
         <FlatList
-          data={filteredRecords}
+          data={displayRecords}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           ListHeaderComponent={
