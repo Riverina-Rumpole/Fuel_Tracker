@@ -9,9 +9,9 @@
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.bowserwonder.app",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "NSCameraUsageDescription": "Bowser Wonder photographs petrol bowser displays to read fill details with OCR.",
         "NSPhotoLibraryUsageDescription": "Bowser Wonder can import a bowser photo from your library when someone else filled the vehicle for you, and can save bowser photos with your fuel records."
