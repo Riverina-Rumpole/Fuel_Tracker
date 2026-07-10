@@ -1,4 +1,12 @@
-import type { ParsedBowserData } from '@/types/fuel';
+import type { LearnedAnchor, LearnedAnchors, ParsedBowserData } from '@/types/fuel';
+
+// Learned-anchor matching compares letters only (lowercased, single-letter
+// words dropped) so unit suffixes and the changing digits on the display
+// don't stop a remembered label like "unleaded" or "this sale" from matching.
+export function normalizeAnchorText(text: string): string {
+  const words = text.toLowerCase().match(/[a-z]+/g) ?? [];
+  return words.filter((word) => word.length >= 2).join(' ');
+}
 
 function parseNumber(value: string): number | null {
   const cleaned = value.replace(/,/g, '').trim();
@@ -105,16 +113,42 @@ function findLabelledValue(
   return null;
 }
 
-function parsePricePerLitre(text: string): number | null {
-  const lines = text.split(/\r?\n/);
+// Learned anchors are label texts remembered from the user's own saves (see
+// lib/ocr-learning.ts). They're tried in hit-count order before the built-in
+// heuristics, using the same label-above-value line convention.
+function findAnchoredValue(
+  lines: string[],
+  anchors: LearnedAnchor[] | undefined,
+  extract: (line: string, labelLine: string) => number | null,
+): number | null {
+  if (!anchors || anchors.length === 0) {
+    return null;
+  }
 
-  // Gate to lines that are clearly about price, not volume. Bare "litre"/"liter"
-  // is deliberately excluded here — it also matches the volume line (e.g.
-  // "Litre 9.230 L"), which previously caused the litres reading to be picked
-  // up as the price when the volume line preceded the price line in OCR order.
-  const priceLineHint = /(price|c\s*\/\s*l|per\s*l|\$\s*\/\s*l)/i;
+  const normalizedLines = lines.map(normalizeAnchorText);
 
-  const extract = (line: string, labelLine: string): number | null => {
+  for (const anchor of anchors) {
+    for (let i = 0; i < lines.length; i += 1) {
+      if (!normalizedLines[i].includes(anchor.token)) {
+        continue;
+      }
+
+      for (const candidateLine of [lines[i], lines[i + 1], lines[i + 2]]) {
+        if (candidateLine === undefined) {
+          continue;
+        }
+        const value = extract(candidateLine, lines[i]);
+        if (value !== null) {
+          return value;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+const extractPriceValue = (line: string, labelLine: string): number | null => {
     // Cents-per-litre, e.g. "185.9c/L", "PRICE 185.9c", or "185.9¢" — number
     // may appear anywhere on the line relative to the "c"/"c/L"/"¢" unit.
     const centsMatch = line.match(/(\d{2,3}(?:\.\d)?)\s*(?:¢|c(?:\s*\/\s*l)?\b)/i);
@@ -149,9 +183,51 @@ function parsePricePerLitre(text: string): number | null {
     }
 
     return null;
-  };
+};
 
-  const labelled = findLabelledValue(lines, priceLineHint, extract);
+// Anchors are learned from the user's own confirmed saves, so a bare number
+// under an anchored label (e.g. "189.9" below "UNLEADED 91") is trusted as a
+// price even without a "c"/"cent" marker: 2-3 digit values read as cents,
+// single-digit values as dollars. The built-in heuristics stay stricter.
+const extractAnchoredPriceValue = (line: string, labelLine: string): number | null => {
+  const strict = extractPriceValue(line, labelLine);
+  if (strict !== null) {
+    return strict;
+  }
+
+  const bareNumber = line.match(/^[^a-zA-Z\d]*(\d{1,3}(?:\.\d{1,2})?)[^a-zA-Z\d]*$/);
+  if (!bareNumber) {
+    return null;
+  }
+
+  const value = parseNumber(bareNumber[1]);
+  if (value === null) {
+    return null;
+  }
+  if (value >= 50 && value <= 500) {
+    return Number((value / 100).toFixed(4));
+  }
+  if (value >= 0.5 && value < 10) {
+    return value;
+  }
+  return null;
+};
+
+function parsePricePerLitre(text: string, anchors?: LearnedAnchor[]): number | null {
+  const lines = text.split(/\r?\n/);
+
+  // Gate to lines that are clearly about price, not volume. Bare "litre"/"liter"
+  // is deliberately excluded here — it also matches the volume line (e.g.
+  // "Litre 9.230 L"), which previously caused the litres reading to be picked
+  // up as the price when the volume line preceded the price line in OCR order.
+  const priceLineHint = /(price|c\s*\/\s*l|per\s*l|\$\s*\/\s*l)/i;
+
+  const anchored = findAnchoredValue(lines, anchors, extractAnchoredPriceValue);
+  if (anchored !== null) {
+    return anchored;
+  }
+
+  const labelled = findLabelledValue(lines, priceLineHint, extractPriceValue);
   if (labelled !== null) {
     return labelled;
   }
@@ -176,14 +252,7 @@ function parsePricePerLitre(text: string): number | null {
   return null;
 }
 
-function parseLitres(text: string): number | null {
-  const lines = text.split(/\r?\n/);
-  // Exclude lines that are clearly about price (e.g. "PRICE PER LITRE" or
-  // "cents per litre") even though they contain the substring "litre" —
-  // those are the price parser's territory, not a volume reading.
-  const litresLineHint = /^(?!.*(?:price|cent)).*(?:volume|litre|liter|vol|qty|quantity)/i;
-
-  const extract = (line: string): number | null => {
+const extractLitresValue = (line: string): number | null => {
     const litresMatch = line.match(/(\d{1,3}(?:\.\d{1,3})?)\s*l\b/i);
     if (litresMatch) {
       const litres = parseNumber(litresMatch[1]);
@@ -216,9 +285,21 @@ function parseLitres(text: string): number | null {
     }
 
     return null;
-  };
+};
 
-  const labelled = findLabelledValue(lines, litresLineHint, extract);
+function parseLitres(text: string, anchors?: LearnedAnchor[]): number | null {
+  const lines = text.split(/\r?\n/);
+  // Exclude lines that are clearly about price (e.g. "PRICE PER LITRE" or
+  // "cents per litre") even though they contain the substring "litre" —
+  // those are the price parser's territory, not a volume reading.
+  const litresLineHint = /^(?!.*(?:price|cent)).*(?:volume|litre|liter|vol|qty|quantity)/i;
+
+  const anchored = findAnchoredValue(lines, anchors, extractLitresValue);
+  if (anchored !== null) {
+    return anchored;
+  }
+
+  const labelled = findLabelledValue(lines, litresLineHint, extractLitresValue);
   if (labelled !== null) {
     return labelled;
   }
@@ -247,11 +328,7 @@ function parseLitres(text: string): number | null {
   return null;
 }
 
-function parseTotalPrice(text: string, litres: number | null, pricePerLitre: number | null): number | null {
-  const lines = text.split(/\r?\n/);
-  const totalLineHint = /total/i;
-
-  const extract = (line: string): number | null => {
+const extractTotalValue = (line: string): number | null => {
     // "$" can sit either side of the amount depending on the pump's display —
     // e.g. "$97.45" or "97.45 $".
     const dollarMatch = line.match(
@@ -274,9 +351,23 @@ function parseTotalPrice(text: string, litres: number | null, pricePerLitre: num
     }
 
     return null;
-  };
+};
 
-  const labelled = findLabelledValue(lines, totalLineHint, extract);
+function parseTotalPrice(
+  text: string,
+  litres: number | null,
+  pricePerLitre: number | null,
+  anchors?: LearnedAnchor[],
+): number | null {
+  const lines = text.split(/\r?\n/);
+  const totalLineHint = /total/i;
+
+  const anchored = findAnchoredValue(lines, anchors, extractTotalValue);
+  if (anchored !== null) {
+    return anchored;
+  }
+
+  const labelled = findLabelledValue(lines, totalLineHint, extractTotalValue);
   if (labelled !== null) {
     return labelled;
   }
@@ -296,10 +387,10 @@ function parseTotalPrice(text: string, litres: number | null, pricePerLitre: num
   return null;
 }
 
-export function parseBowserText(rawText: string): ParsedBowserData {
-  const pricePerLitre = parsePricePerLitre(rawText);
-  const litres = parseLitres(rawText);
-  const totalPrice = parseTotalPrice(rawText, litres, pricePerLitre);
+export function parseBowserText(rawText: string, learned?: LearnedAnchors): ParsedBowserData {
+  const pricePerLitre = parsePricePerLitre(rawText, learned?.pricePerLitre);
+  const litres = parseLitres(rawText, learned?.litres);
+  const totalPrice = parseTotalPrice(rawText, litres, pricePerLitre, learned?.totalPrice);
   const date = parseDate(rawText);
 
   return {

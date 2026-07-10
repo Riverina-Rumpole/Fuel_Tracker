@@ -23,6 +23,16 @@ export interface ParsedBowserData {
   rawText: string;
 }
 
+export type BowserNumericField = 'pricePerLitre' | 'litres' | 'totalPrice';
+
+export interface LearnedAnchor {
+  token: string;
+  hits: number;
+  lastSeenAt: string;
+}
+
+export type LearnedAnchors = Record<BowserNumericField, LearnedAnchor[]>;
+
 export interface FuelMetrics {
   kmSinceLastFill: number | null;
   kmPerLitre: number | null;

@@ -16,6 +16,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { GradientButton } from '@/components/gradient-button';
 import { AppColors } from '@/constants/colors';
 import { pressedStyle } from '@/constants/styles';
+import { getLearnedAnchors } from '@/lib/ocr-learning';
 import { parseBowserText } from '@/lib/ocr-parser';
 import type { ParsedBowserData } from '@/types/fuel';
 
@@ -36,8 +37,8 @@ export function BowserCamera({ onCaptured, onCancel }: BowserCameraProps) {
   const [error, setError] = useState<string | null>(null);
 
   const runOcr = async (uri: string) => {
-    const recognition = await recognizeText(uri);
-    const parsed = parseBowserText(recognition.text);
+    const [recognition, learned] = await Promise.all([recognizeText(uri), getLearnedAnchors()]);
+    const parsed = parseBowserText(recognition.text, learned);
     onCaptured({ imageUri: uri, parsed });
   };
 

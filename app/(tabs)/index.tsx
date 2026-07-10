@@ -14,6 +14,7 @@ import { AppColors } from '@/constants/colors';
 import { cardShadow, sharedStyles } from '@/constants/styles';
 import { useFuelRecords } from '@/hooks/use-fuel-records';
 import { useVehicles } from '@/hooks/use-vehicles';
+import { recordOcrLearning } from '@/lib/ocr-learning';
 import type { FuelFill, ParsedBowserData } from '@/types/fuel';
 
 type CaptureState = {
@@ -63,6 +64,16 @@ export default function FillScreen() {
       };
 
       await saveFill(fill);
+
+      // Learning is best-effort: a failure here should never block the save.
+      if (capture) {
+        recordOcrLearning(capture.parsed.rawText, {
+          pricePerLitre: values.pricePerLitre,
+          litres: values.litres,
+          totalPrice: values.totalPrice,
+        }).catch(() => {});
+      }
+
       setCapture(null);
       setShowCamera(false);
       Alert.alert('Saved', 'Fill added to your cumulative fuel spreadsheet.');
