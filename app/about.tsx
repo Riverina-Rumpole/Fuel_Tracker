@@ -1,8 +1,9 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { AppColors } from '@/constants/colors';
 import { cardShadow, sharedStyles } from '@/constants/styles';
+import { clearOcrLearning } from '@/lib/ocr-learning';
 
 const FEATURE_GROUPS = [
   {
@@ -46,6 +47,25 @@ const FEATURE_GROUPS = [
   },
 ];
 
+function confirmResetScanLearning() {
+  Alert.alert(
+    'Reset scan learning?',
+    'Fuel Tracker forgets the display labels it has learned from your saved fills. Scans fall back to the built-in reader until it learns your bowsers again.',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Reset',
+        style: 'destructive',
+        onPress: () => {
+          clearOcrLearning()
+            .then(() => Alert.alert('Scan learning reset'))
+            .catch(() => Alert.alert('Reset failed', 'Please try again.'));
+        },
+      },
+    ],
+  );
+}
+
 export default function AboutScreen() {
   return (
     <ScrollView style={sharedStyles.screen} contentContainerStyle={sharedStyles.content}>
@@ -72,6 +92,20 @@ export default function AboutScreen() {
           </View>
         </View>
       ))}
+
+      <View style={styles.groupCard}>
+        <Text style={styles.groupTitle}>Scan learning</Text>
+        <Text style={styles.bulletText}>
+          Fuel Tracker learns where each figure sits on the bowser displays you use from the fills
+          you save, so scans get more accurate over time. Everything stays on this device. If
+          scans start picking the wrong numbers, reset the learning to start fresh.
+        </Text>
+        <Pressable
+          style={({ pressed }) => [sharedStyles.secondaryButton, pressed && { opacity: 0.85 }]}
+          onPress={confirmResetScanLearning}>
+          <Text style={styles.resetText}>Reset scan learning</Text>
+        </Pressable>
+      </View>
 
       <Pressable
         style={({ pressed }) => [sharedStyles.secondaryButton, pressed && { opacity: 0.85 }]}
@@ -117,5 +151,10 @@ const styles = StyleSheet.create({
     color: AppColors.textMuted,
     fontSize: 14,
     lineHeight: 20,
+  },
+  resetText: {
+    color: AppColors.danger,
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

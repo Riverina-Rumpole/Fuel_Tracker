@@ -93,6 +93,10 @@ function upsertAnchor(anchors: LearnedAnchor[], token: string): LearnedAnchor[] 
   return updated.sort((a, b) => b.hits - a.hits).slice(0, MAX_ANCHORS_PER_FIELD);
 }
 
+export async function clearOcrLearning(): Promise<void> {
+  await AsyncStorage.removeItem(ANCHORS_KEY);
+}
+
 export async function recordOcrLearning(
   rawText: string,
   saved: Record<BowserNumericField, number>,
