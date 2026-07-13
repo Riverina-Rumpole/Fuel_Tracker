@@ -113,7 +113,8 @@ export function FuelEntryForm({
         <View>
           <Text style={sharedStyles.title}>Review fill details</Text>
           <Text style={sharedStyles.subtitle}>
-            OCR results are editable. Add your odometer reading before saving to the log.
+            OCR results are editable. Add your odometer reading before saving to the log. Any
+            figures you correct teach the app to read your bowser better next time.
           </Text>
         </View>
 

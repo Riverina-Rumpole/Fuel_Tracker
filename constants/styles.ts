@@ -36,6 +36,11 @@ export const sharedStyles = StyleSheet.create({
   content: {
     padding: 20,
     gap: 16,
+    // Cap the column width so the phone-first layout stays readable and
+    // centred on wide iPad screens; a no-op on iPhone (screen < maxWidth).
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
   },
   card: {
     backgroundColor: AppColors.surface,

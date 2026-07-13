@@ -18,7 +18,7 @@ const TIPS = [
   },
   {
     title: 'OCR got something wrong',
-    text: 'Every field on the review screen is editable. Just tap in and fix it before saving — nothing is locked to what was scanned.',
+    text: 'Every field on the review screen is editable. Just tap in and fix it before saving — nothing is locked to what was scanned. Each fix also teaches Fuel Tracker where that figure lives on the displays you use, so scans of your regular bowsers get more accurate over time.',
   },
   {
     title: 'Managing multiple vehicles',

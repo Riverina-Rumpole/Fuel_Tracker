@@ -260,6 +260,9 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 12,
     gap: 14,
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
   },
   headerActions: {
     flexDirection: 'row',
@@ -315,6 +318,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 24,
     gap: 12,
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
   },
   listHeader: {
     marginBottom: 12,
